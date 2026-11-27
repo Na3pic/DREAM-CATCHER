@@ -833,11 +833,12 @@ Contraintes techniques :
 Réponds uniquement avec le code SVG.`;
   for(let essai=0; essai<2; essai++){
     try{
-      const res = await delai(sample(consigne), 240000);
+      const res = await delai(sample(consigne), 150000);
       const svg = nettoyerSvg(res && res.text);
       if(svg) return svg;
     }catch(err){
-      if(err && ["not_granted","rate_limited","timeout"].includes(err.code)) return null;
+      derniereErreur = err;
+      if(err && ["not_granted","rate_limited","timeout","quota_jour","cle"].includes(err.code)) return null;
     }
   }
   return null;
@@ -948,7 +949,7 @@ $("#voir-parchemin").onclick = () => { if(courant && courant.interpretation){ fe
 let dernier = null;
 function annoncer(r){
   dernier = r;
-  $("#toast-txt").textContent = "Ton rêve « "+r.title+" » est prêt";
+  $("#toast-txt").textContent = r.svgs || !sample ? "Ton rêve « "+r.title+" » est prêt" : "Ton rêve est prêt, mais sans dessins : " + ((derniereErreur && derniereErreur.message) || "Gemini n'a pas répondu à temps");
   $("#toast").classList.add("ouvert");
   clearTimeout(annoncer.t); annoncer.t = setTimeout(()=>$("#toast").classList.remove("ouvert"), 9000);
 }
@@ -1131,11 +1132,22 @@ async function ouvrirLecteur(r){
   const ch = $("#chargement");
   if(r.svgs && r.styleV !== STYLE_V && sample){ r._ancien = r.svgs; delete r.svgs; delete r._ims; }
   if(!r.svgs && sample){
-    ch.classList.add("ouvert"); $("#chargement-txt").textContent = "L'IA dessine ce rêve… 0/4 scènes";
+    const txt = $("#chargement-txt"); let faites = 0;
+    const base = () => `L'IA dessine ce rêve… ${faites}/4 scènes (compte 1 à 2 minutes)`;
+    ch.classList.add("ouvert"); txt.textContent = base();
     fx.fillStyle = "#2a2350"; fx.fillRect(0,0,W,H);
-    const ok = await dessiner(r, n => { $("#chargement-txt").textContent = "L'IA dessine ce rêve… "+n+"/4 scènes"; });
+    derniereErreur = null;
+    messageIA = m => { txt.textContent = base() + "\n" + m; };
+    txt.style.whiteSpace = "pre-line";
+    const ok = await dessiner(r, n => { faites = n; txt.textContent = base(); });
+    messageIA = null;
     if(ok){ delete r._ancien; r.example ? memoEx() : sauver(r); rendre(); }
-    else if(r._ancien){ r.svgs = r._ancien; delete r._ancien; }
+    else {
+      if(r._ancien){ r.svgs = r._ancien; delete r._ancien; }
+      const pourquoi = derniereErreur && derniereErreur.message ? derniereErreur.message : "Gemini n'a pas répondu à temps";
+      txt.textContent = "Dessin impossible pour l'instant : " + pourquoi + ".\nLe film s'affiche en version simple, les dessins seront retentés à la prochaine ouverture.";
+      await pause(4500);
+    }
   }
   if(r.svgs && !r._ims) r._ims = await chargerImages(r);
   ch.classList.remove("ouvert");
@@ -1214,6 +1226,7 @@ const MODELE_DEFAUT = "gemini-3.8-flash";
 const cleGemini = () => { try { return localStorage.getItem("ar-cle") || ""; } catch(e){ return ""; } };
 const modeleGemini = () => { try { return localStorage.getItem("ar-modele") || MODELE_DEFAUT; } catch(e){ return MODELE_DEFAUT; } };
 const pause = ms => new Promise(ok => setTimeout(ok, ms));
+let messageIA = null, derniereErreur = null;
 let enVol = 0; const file = [];
 async function creneau(){ if(enVol < 2){ enVol++; return; } await new Promise(ok => file.push(ok)); enVol++; }
 function libere(){ enVol--; const suivant = file.shift(); if(suivant) suivant(); }
@@ -1229,7 +1242,16 @@ async function appelGemini(prompt, json, cle, modele){
           generationConfig: json ? {responseMimeType: "application/json"} : {}
         })
       });
-      if(res.status === 429 || res.status === 503){ await pause(12000 * (essai + 1)); continue; }
+      if(res.status === 429 || res.status === 503){
+        let info = {}; try { info = (await res.json()).error || {}; } catch(e){}
+        const msg = String(info.message || "");
+        if(/per.?day|perday|daily/i.test(msg)) throw {code: "quota_jour", message: "la limite gratuite du jour est atteinte, réessaie demain"};
+        let attente = 15000 * (essai + 1);
+        const d = (info.details || []).find(x => x && x.retryDelay);
+        if(d) attente = Math.min(60000, (parseFloat(d.retryDelay) || 15) * 1000 + 1000);
+        if(messageIA) messageIA(res.status === 503 ? `Gemini est surchargé, nouvel essai dans ${Math.round(attente/1000)} s…` : `Limite gratuite de Gemini atteinte pour la minute, reprise dans ${Math.round(attente/1000)} s…`);
+        await pause(attente); continue;
+      }
       if(!res.ok){
         let detail = ""; try { detail = (await res.json()).error.message; } catch(e){}
         throw {code: res.status === 400 || res.status === 403 ? "cle" : "http", message: detail || ("Erreur " + res.status)};
