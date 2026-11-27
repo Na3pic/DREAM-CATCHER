@@ -677,7 +677,7 @@ async function fabriquer(r){
       sauver(r);
     }
     if(!r.svgs && sample){
-      r._prog = "Dessin : 0/4 scènes"; rendre();
+      r._prog = "L'IA dessine les 4 scènes…"; rendre();
       await dessiner(r, n => { r._prog = "Dessin : "+n+"/4 scènes"; rendre(); });
     }
   }catch(e){
@@ -845,9 +845,36 @@ Réponds uniquement avec le code SVG.`;
 }
 async function dessiner(r, onProgres){
   if(!sample || !r.scenes) return false;
-  let faits = 0;
-  const svgs = await Promise.all(r.scenes.map((_,i) => dessinerScene(r,i).then(v => { faits++; onProgres && onProgres(faits); return v; })));
-  if(svgs.every(Boolean)){ r.svgs = svgs; r.styleV = STYLE_V; return true; }
+  // Les 4 scènes en UNE seule demande, pour économiser le quota gratuit de Gemini.
+  const nature = genre(r)==="cauchemar" ? "cauchemar" : "rêve";
+  const consigne = `Dessine les 4 scènes d'un ${nature} en SVG, comme les 4 cases d'une histoire.
+Rêve complet (pour le contexte) : """${r.text.slice(0,1200)}"""
+Les 4 légendes, dans l'ordre :
+${r.scenes.map((sc,i) => `${i+1}. "${sc.caption}"`).join("\n")}
+${genre(r)==="cauchemar" ? STYLE_C : STYLE}
+${PERSO}
+Voici un dessin MODÈLE (sa légende était « Une piscine dans le grenier, des poissons nagent sous le toit ») : il montre le style, le niveau de simplicité, la lisibilité attendue et la rêveuse. Imite son trait et sa rêveuse, mais compose 4 scènes nouvelles qui illustrent tes légendes :
+${MODELE}
+Contraintes techniques, pour CHACUNE des 4 scènes :
+- Un élément <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 960"> (format vertical 9:16), fond blanc entièrement rempli.
+- AUCUN texte, aucune lettre.
+- Toute la scène tient entre y=100 et y=700 ; en dessous de y=720, laisse du blanc (une légende s'y affichera).
+- Commence chaque SVG par un commentaire <!-- plan : ... --> qui liste les éléments, leur place et ce que fait la rêveuse, puis dessine en suivant ce plan.
+- Uniquement path, rect, circle, ellipse, line, polyline, polygon, g. Pas d'image, pas de script, pas de filtre, pas de dégradé (l'effet de trait tremblé est ajouté automatiquement).
+- 15 à 50 formes, moins de 9 000 caractères.
+Réponds uniquement avec les 4 éléments <svg>…</svg> à la suite, dans l'ordre des légendes, sans aucun autre texte.`;
+  for(let essai = 0; essai < 2; essai++){
+    try{
+      const res = await delai(sample(consigne), 200000);
+      const bruts = String(res && res.text || "").match(/<svg[\s\S]*?<\/svg>/gi) || [];
+      const svgs = bruts.map(nettoyerSvg).filter(Boolean);
+      if(svgs.length >= 4){ r.svgs = svgs.slice(0,4); r.styleV = STYLE_V; onProgres && onProgres(4); return true; }
+      derniereErreur = {code: "incomplet", message: "Gemini n'a renvoyé que " + svgs.length + " dessin(s) sur 4"};
+    }catch(err){
+      derniereErreur = err;
+      if(err && ["not_granted","rate_limited","timeout","quota_jour","cle"].includes(err.code)) return false;
+    }
+  }
   return false;
 }
 function chargerImages(r){
@@ -1133,7 +1160,7 @@ async function ouvrirLecteur(r){
   if(r.svgs && r.styleV !== STYLE_V && sample){ r._ancien = r.svgs; delete r.svgs; delete r._ims; }
   if(!r.svgs && sample){
     const txt = $("#chargement-txt"); let faites = 0;
-    const base = () => `L'IA dessine ce rêve… ${faites}/4 scènes (compte 1 à 2 minutes)`;
+    const base = () => faites ? "Les 4 scènes sont dessinées !" : "L'IA dessine les 4 scènes de ce rêve… (compte 1 à 2 minutes)";
     ch.classList.add("ouvert"); txt.textContent = base();
     fx.fillStyle = "#2a2350"; fx.fillRect(0,0,W,H);
     derniereErreur = null;
@@ -1223,6 +1250,7 @@ $("#basculer-ex").onclick = () => { montrerEx = !montrerEx; try{ localStorage.se
 
 /* ---------------- Gemini ---------------- */
 const MODELE_DEFAUT = "gemini-3.8-flash";
+const MODELE_SECOURS = "gemini-3.5-flash-lite";
 const cleGemini = () => { try { return localStorage.getItem("ar-cle") || ""; } catch(e){ return ""; } };
 const modeleGemini = () => { try { return localStorage.getItem("ar-modele") || MODELE_DEFAUT; } catch(e){ return MODELE_DEFAUT; } };
 const pause = ms => new Promise(ok => setTimeout(ok, ms));
@@ -1245,7 +1273,14 @@ async function appelGemini(prompt, json, cle, modele){
       if(res.status === 429 || res.status === 503){
         let info = {}; try { info = (await res.json()).error || {}; } catch(e){}
         const msg = String(info.message || "");
-        if(/per.?day|perday|daily/i.test(msg)) throw {code: "quota_jour", message: "la limite gratuite du jour est atteinte, réessaie demain"};
+        if(/per.?day|perday|daily/i.test(msg)){
+          if(modele !== MODELE_SECOURS){
+            modele = MODELE_SECOURS;
+            if(messageIA) messageIA("Quota du jour épuisé sur le modèle principal : je passe au modèle léger…");
+            essai--; continue;
+          }
+          throw {code: "quota_jour", message: "la limite gratuite du jour est atteinte, réessaie demain"};
+        }
         let attente = 15000 * (essai + 1);
         const d = (info.details || []).find(x => x && x.retryDelay);
         if(d) attente = Math.min(60000, (parseFloat(d.retryDelay) || 15) * 1000 + 1000);
