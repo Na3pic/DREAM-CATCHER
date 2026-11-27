@@ -1,5 +1,5 @@
 // Attrape-rêves : garde l'appli disponible même sans réseau (sauf l'IA).
-const VERSION = "attrape-reves-v1";
+const VERSION = "attrape-reves-v2";
 const FICHIERS = ["./", "./index.html", "./manifest.webmanifest", "./icone-192.png", "./icone-512.png"];
 
 self.addEventListener("install", e => {

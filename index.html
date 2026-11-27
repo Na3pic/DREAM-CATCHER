@@ -302,8 +302,8 @@ body.sur-oracle #ouvrir-saisie{opacity:0;pointer-events:none;translate:0 20px}
       </button>
     </div>
   </header>
-  <p class="intro">Raconte ton rêve au réveil. l'IA le dessine en 4 scènes au feutre, et il rejoint tes bulles en petit film de 15 secondes.</p>
-  <p class="note alerte" id="alerte-cle" hidden><span>Ajoute ta clé Gemini pour que l'IA dessine tes rêves.</span><button type="button" id="alerte-reglages">Réglages</button></p>
+  <p class="intro">Raconte ton rêve au réveil. l'IA le met en scène en 4 cartes, et il rejoint tes bulles en petit film de 15 secondes.</p>
+  <p class="note alerte" id="alerte-cle" hidden><span>Ajoute ta clé Gemini pour que l'IA mette en scène tes rêves.</span><button type="button" id="alerte-reglages">Réglages</button></p>
   <div class="barre">
     <div class="filtres" role="group" aria-label="Filtrer">
       <button type="button" data-f="tout" aria-pressed="true">Tout</button>
@@ -445,7 +445,11 @@ body.sur-oracle #ouvrir-saisie{opacity:0;pointer-events:none;translate:0 20px}
 (() => {
 "use strict";
 const $ = s => document.querySelector(s);
-const MOTIFS = ["lune","vagues","escalier","porte","nuage","oiseaux","maison","foret","etoiles","spirale","poisson","montagne","ville","coeur","fleur"];
+/* 100 pictogrammes dessinés sur une grille 100×100 : [description, tracé, parties dorées, parties pleines] */
+const PICTOS = {"personne":["une personne","M40 22a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M50 34V64M30 46L50 41L70 46M50 64L36 88M50 64L64 88","",""],"deux_personnes":["deux personnes","M24 28a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M32 38V62M18 48L32 44L46 48M32 62L22 84M32 62L42 84M60 28a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M68 38V62M54 48L68 44L82 48M68 62L58 84M68 62L78 84","",""],"foule":["une foule","M16 40a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M41 32a9 9 0 1 0 18 0a9 9 0 1 0 -18 0M68 40a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M10 76C10 56 38 56 38 76M34 72C34 46 66 46 66 72M62 76C62 56 90 56 90 76","",""],"visage":["un visage","M18 50a32 32 0 1 0 64 0a32 32 0 1 0 -64 0M38 63Q50 72 62 63M48 50Q50 56 46 57","","M35.5 44a3.5 3.5 0 1 0 7.0 0a3.5 3.5 0 1 0 -7.0 0M57.5 44a3.5 3.5 0 1 0 7.0 0a3.5 3.5 0 1 0 -7.0 0"],"main":["une main","M34 90V56L22 44Q18 38 24 36Q28 35 34 42V22Q34 17 39 17Q44 17 44 22V46V16Q44 11 49 11Q54 11 54 16V46V20Q54 15 59 15Q64 15 64 20V48V30Q64 25 69 25Q74 25 74 30V62Q74 90 52 90Z","",""],"oeil":["un œil","M10 50Q50 12 90 50Q50 88 10 50ZM36 50a14 14 0 1 0 28 0a14 14 0 1 0 -28 0","","M44 50a6 6 0 1 0 12 0a6 6 0 1 0 -12 0"],"bebe":["un bébé","M28 42a22 22 0 1 0 44 0a22 22 0 1 0 -44 0M50 20Q56 14 52 9M43 52Q50 57 57 52M36 66Q50 92 64 66","","M39.5 42a2.5 2.5 0 1 0 5.0 0a2.5 2.5 0 1 0 -5.0 0M55.5 42a2.5 2.5 0 1 0 5.0 0a2.5 2.5 0 1 0 -5.0 0"],"bouche":["une bouche","M14 50Q32 30 50 41Q68 30 86 50Q50 82 14 50ZM14 50Q50 58 86 50","",""],"oreille":["une oreille","M58 88Q38 92 36 72Q34 60 28 52Q18 32 38 16Q64 6 72 30Q76 46 62 56Q55 62 58 76M47 36Q57 30 60 42Q60 50 52 52","",""],"pied":["un pied, une empreinte","M38 42Q30 62 38 82Q50 96 61 82Q69 62 62 42Q50 34 38 42ZM32.5 27a4.5 4.5 0 1 0 9.0 0a4.5 4.5 0 1 0 -9.0 0M42 22a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M52.5 23a4.5 4.5 0 1 0 9.0 0a4.5 4.5 0 1 0 -9.0 0M61 28a4 4 0 1 0 8 0a4 4 0 1 0 -8 0M66.5 35a3.5 3.5 0 1 0 7.0 0a3.5 3.5 0 1 0 -7.0 0","",""],"crane":["un crâne, la mort","M30 60Q22 18 50 16Q78 18 70 60L66 62V78H34V62ZM50 56L46 64H54ZM42 70V78M50 70V78M58 70V78","","M33 46a7 7 0 1 0 14 0a7 7 0 1 0 -14 0M53 46a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"],"fantome":["un fantôme","M28 86V45Q28 14 50 14Q72 14 72 45V86L64 78L57 86L50 78L43 86L36 78Z","","M38 44a4 6 0 1 0 8 0a4 6 0 1 0 -8 0M54 44a4 6 0 1 0 8 0a4 6 0 1 0 -8 0"],"chat":["un chat","M36 34a14 14 0 1 0 28 0a14 14 0 1 0 -28 0M38 27L36 11L47 21M62 27L64 11L53 21M38 46Q26 74 32 88H68Q74 74 62 46M68 84Q88 80 82 60M30 36H18M30 40L20 44M70 36H82M70 40L80 44","","M42.5 33a2.5 2.5 0 1 0 5.0 0a2.5 2.5 0 1 0 -5.0 0M52.5 33a2.5 2.5 0 1 0 5.0 0a2.5 2.5 0 1 0 -5.0 0"],"chien":["un chien","M26 34Q26 24 36 24H58Q68 24 72 34L86 40Q92 52 82 56H70Q66 70 52 72H38Q26 70 26 56ZM34 26Q18 30 22 54Q32 52 36 38M52 72L50 86M66 64L68 86","","M55 36a3 3 0 1 0 6 0a3 3 0 1 0 -6 0M83 47a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"],"oiseau":["un oiseau","M10 52Q28 34 50 54Q72 34 90 52M54 28Q62 18 72 28Q82 18 90 28","",""],"poisson":["un poisson","M22 50C36 30 70 30 84 50C70 70 36 70 22 50ZM26 50L8 36V64ZM48 36Q54 26 62 36M60 44Q64 50 60 56","","M69 46a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"],"serpent":["un serpent","M18 84Q18 66 38 66Q60 66 60 50Q60 36 40 36Q24 36 28 22Q32 12 52 14M60 14L70 10M60 14L70 18","","M50 14a5 5 0 1 0 10 0a5 5 0 1 0 -10 0"],"cheval":["un cheval","M34 90L38 56Q28 40 40 24L42 10L50 20Q70 20 82 44Q86 56 76 58Q70 60 62 52L58 60Q58 76 64 90M42 18Q32 34 36 56","","M53.5 32a2.5 2.5 0 1 0 5.0 0a2.5 2.5 0 1 0 -5.0 0"],"araignee":["une araignée","M40 56a10 10 0 1 0 20 0a10 10 0 1 0 -20 0M44 41a6 6 0 1 0 12 0a6 6 0 1 0 -12 0M50 35V6M42 52L28 40L18 50M42 56L25 55L14 66M43 60L30 68L24 82M44 63L36 78L34 90M58 52 L72 40 L82 50 M58 56 L75 55 L86 66 M57 60 L70 68 L76 82 M56 63 L64 78 L66 90 ","",""],"papillon":["un papillon","M50 48C36 18 10 20 14 42C18 54 40 52 50 50C40 56 20 62 28 80C36 90 48 72 50 52M50 48C64 18 90 20 86 42C82 54 60 52 50 50C60 56 80 62 72 80C64 90 52 72 50 52M50 30V76M50 30Q45 18 38 15M50 30Q55 18 62 15","",""],"lapin":["un lapin","M35 58a15 15 0 1 0 30 0a15 15 0 1 0 -30 0M44 44Q34 8 43 8Q50 10 48 44M56 44Q66 8 57 8Q50 10 52 44M36 70Q28 92 50 92Q72 92 64 70M47 64Q50 67 53 64","","M41.5 56a2.5 2.5 0 1 0 5.0 0a2.5 2.5 0 1 0 -5.0 0M53.5 56a2.5 2.5 0 1 0 5.0 0a2.5 2.5 0 1 0 -5.0 0"],"souris":["une souris","M16 72Q22 46 52 46Q74 46 86 68L88 72ZM16 72Q4 62 12 50M86 68L92 66M53 40a9 9 0 1 0 18 0a9 9 0 1 0 -18 0","","M73.5 60a2.5 2.5 0 1 0 5.0 0a2.5 2.5 0 1 0 -5.0 0"],"baleine":["une baleine","M10 55Q12 30 45 30Q75 30 82 50L92 38L91 64L82 58Q70 76 40 76Q12 76 10 55ZM38 28Q34 16 28 12M38 28Q42 16 48 12M20 62Q40 70 60 64","","M23 48a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"],"abeille":["une abeille","M37 56a20 14 0 1 0 40 0a20 14 0 1 0 -40 0M23 56a8 8 0 1 0 16 0a8 8 0 1 0 -16 0M52 43Q48 56 52 69M63 43Q59 56 63 69M77 56H85M44 36a8 12 0 1 0 16 0a8 12 0 1 0 -16 0M56 36a8 12 0 1 0 16 0a8 12 0 1 0 -16 0M28 48L24 38M33 48L35 38","",""],"escargot":["un escargot","M34 50a22 22 0 1 0 44 0a22 22 0 1 0 -44 0M56 50m0 -5a5 5 0 1 1 -5 5a10 10 0 1 1 10 10a15 15 0 1 1 -15 -15M10 74H84Q90 74 86 68M22 74Q12 64 16 52M16 52L10 40M16 52L22 40","",""],"hibou":["un hibou","M30 86Q20 50 30 30L34 14L45 24H55L66 14L70 30Q80 50 70 86ZM50 48L46 54L50 58L54 54ZM40 66Q45 70 50 66Q55 70 60 66M42 76Q46 80 50 76Q54 80 58 76M32 40a9 9 0 1 0 18 0a9 9 0 1 0 -18 0M50 40a9 9 0 1 0 18 0a9 9 0 1 0 -18 0","","M37 40a4 4 0 1 0 8 0a4 4 0 1 0 -8 0M55 40a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"],"voiture":["une voiture","M10 66V54Q12 46 22 45L32 32Q35 28 42 28H62Q68 28 72 34L80 45Q90 46 90 56V66ZM36 34H46V45H28ZM52 34H62L69 45H52ZM21 67a9 9 0 1 0 18 0a9 9 0 1 0 -18 0M61 67a9 9 0 1 0 18 0a9 9 0 1 0 -18 0","",""],"train":["un train","M36 12H64Q72 12 72 20V66Q72 74 64 74H36Q28 74 28 66V20Q28 12 36 12ZM35 21h30v18h-30ZM30 74L20 92M70 74L80 92M24 84H76M42 12V6H58V12","","M34 60a4 4 0 1 0 8 0a4 4 0 1 0 -8 0M58 60a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"],"avion":["un avion","M50 8Q57 12 57 30V42L90 58V65L57 56V76L67 84V89L50 85L33 89V84L43 76V56L10 65V58L43 42V30Q43 12 50 8Z","",""],"bateau":["un bateau","M14 64H86L74 80H26ZM50 64V10M52 14L82 58H52ZM48 22L24 58H48ZM5 90q10 -6 20 0t20 0t20 0t20 0t20 0","",""],"velo":["un vélo","M9 66a17 17 0 1 0 34 0a17 17 0 1 0 -34 0M57 66a17 17 0 1 0 34 0a17 17 0 1 0 -34 0M26 66L44 40H68L74 66M44 40L52 66H26M52 66L68 40M38 32H50M68 40L64 30H74","",""],"bus":["un bus","M20 22H80Q88 22 88 30V68Q88 76 80 76H20Q12 76 12 68V30Q12 22 20 22ZM19 30h15v15h-15ZM39 30h15v15h-15ZM59 30h22v15h-22ZM12 54H88M23 78a7 7 0 1 0 14 0a7 7 0 1 0 -14 0M63 78a7 7 0 1 0 14 0a7 7 0 1 0 -14 0","",""],"fusee":["une fusée","M50 8Q71 25 68 62H32Q29 25 50 8ZM32 50L18 70L32 66M68 50L82 70L68 66M42 34a8 8 0 1 0 16 0a8 8 0 1 0 -16 0","M40 64Q50 96 60 64Z",""],"montgolfiere":["une montgolfière","M50 8Q81 8 81 38Q81 56 58 70H42Q19 56 19 38Q19 8 50 8ZM50 8Q36 38 45 70M50 8Q64 38 55 70M42 70L44 80M58 70L56 80M42 80h16v11h-16Z","",""],"ascenseur":["un ascenseur","M24 8h52v84h-52ZM24 24H76M50 24V92M40 19L45 13L50 19M54 13L59 19L64 13","",""],"maison":["une maison","M20 88V50L50 22L80 50V88ZM66 37V24H72V43M44 64h12v24h-12Z","M27 57h12v12h-12Z",""],"immeuble":["un immeuble","M28 8h44v82h-44ZM44 74h12v16h-12Z","M34 16h7v7h-7ZM46 16h7v7h-7ZM58 16h7v7h-7ZM34 28h7v7h-7ZM46 28h7v7h-7ZM58 28h7v7h-7ZM34 40h7v7h-7ZM46 40h7v7h-7ZM58 40h7v7h-7ZM34 52h7v7h-7ZM46 52h7v7h-7ZM58 52h7v7h-7ZM34 64h7v7h-7ZM46 64h7v7h-7ZM58 64h7v7h-7Z",""],"ville":["une ville","M6 90V56H20V36H34V60H44V18H58V48H68V38H82V60H94V90Z","M24 44h4v5h-4ZM28 52h4v5h-4ZM48 26h4v5h-4ZM52 36h4v5h-4ZM48 46h4v5h-4ZM72 46h4v5h-4ZM76 54h4v5h-4ZM10 64h4v5h-4Z",""],"ecole":["une école","M14 88V46H86V88M10 46L50 20L90 46M50 20V7L61 10L50 13M43 66h14v22h-14ZM21 56h13v12h-13ZM66 56h13v12h-13ZM44 36a6 6 0 1 0 12 0a6 6 0 1 0 -12 0M50 33V36L52 38","",""],"eglise":["une église","M20 56h60v32h-60ZM17 56L50 36L83 56M42 56V26L50 16L58 26V56M50 16V5M45 9H55M45 88V76Q50 68 55 76V88","",""],"chateau":["un château","M14 88V38H22V44H30V38H38V58H62V38H70V44H78V38H86V88ZM38 58V26H44V32H50V26H56V32H62V26V58M45 88V74Q50 66 55 74V88M50 26V14L58 17L50 20","",""],"pont":["un pont","M4 46H96M4 54H96M14 86Q50 30 86 86M30 54V64M50 54V54M70 54V64M14 54V86M86 54V86M5 92q10 -6 20 0t20 0t20 0t20 0t20 0","",""],"phare":["un phare","M38 90L43 36H57L62 90ZM42 36V26H58V36M40 26L50 16L60 26M41 56H59M40 72H60M60 29L90 20M60 33L90 42M40 29L10 20M40 33L10 42","M45 27h10v7h-10Z",""],"tente":["une tente","M8 86L50 20L92 86ZM42 86L50 56L58 86M50 20V8L59 11L50 14","",""],"magasin":["un magasin","M14 34H86L81 48Q76 54 71 48Q66 54 61 48Q56 54 51 48Q46 54 41 48Q36 54 31 48Q26 54 21 48ZM20 48V88H80V48M25 18H75V34M58 88V60H72V88M26 60h24v16h-24Z","",""],"hopital":["un hôpital","M18 26h64v62h-64ZM44 76h12v12h-12ZM30 26V16H70V26","M44 36H56V44H64V56H56V64H44V56H36V44H44Z",""],"piscine":["une piscine","M24 52H76L90 76H10ZM24 64Q30 60 36 64T48 64T60 64T72 64M70 52V32Q70 26 76 26M79 52V32Q79 26 85 26M70 42H79","",""],"lune":["la lune","M58 12A38 38 0 1 0 88 66A30 30 0 1 1 58 12Z","",""],"soleil":["le soleil","M34 50a16 16 0 1 0 32 0a16 16 0 1 0 -32 0M74.0 50.0L86.0 50.0M67.0 67.0L75.5 75.5M50.0 74.0L50.0 86.0M33.0 67.0L24.5 75.5M26.0 50.0L14.0 50.0M33.0 33.0L24.5 24.5M50.0 26.0L50.0 14.0M67.0 33.0L75.5 24.5","",""],"etoiles":["des étoiles","M40.0 22.0L45.3 34.7L59.0 35.8L48.6 44.8L51.8 58.2L40.0 51.0L28.2 58.2L31.4 44.8L21.0 35.8L34.7 34.7ZM74.0 14.0L76.6 20.4L83.5 20.9L78.3 25.4L79.9 32.1L74.0 28.5L68.1 32.1L69.7 25.4L64.5 20.9L71.4 20.4ZM72.0 60.0L75.2 67.6L83.4 68.3L77.1 73.7L79.1 81.7L72.0 77.4L64.9 81.7L66.9 73.7L60.6 68.3L68.8 67.6ZM20.0 72.0L21.6 75.8L25.7 76.1L22.6 78.8L23.5 82.9L20.0 80.7L16.5 82.9L17.4 78.8L14.3 76.1L18.4 75.8Z","",""],"nuage":["un nuage","M24 72Q8 72 10 56Q12 42 28 44Q30 24 52 26Q68 18 78 36Q94 38 92 56Q90 72 74 72Z","",""],"pluie":["la pluie","M28 52Q14 52 16 41Q18 31 30 33Q32 18 50 20Q64 14 72 28Q86 28 84 42Q82 52 70 52ZM30 62L24 76M44 62L38 76M58 62L52 76M72 62L66 76M37 80L33 90M51 80L47 90M65 80L61 90","",""],"orage":["l'orage","M28 50Q14 50 16 39Q18 29 30 31Q32 16 50 18Q64 12 72 26Q86 26 84 40Q82 50 70 50Z","M52 50L38 72H50L42 94L66 64H54L62 50Z",""],"neige":["la neige","M86.0 50.0L14.0 50.0M68.0 81.2L32.0 18.8M32.0 81.2L68.0 18.8M72.3 50.0L82.2 56.8M72.3 50.0L82.2 43.2M61.2 69.3L60.2 81.3M61.2 69.3L72.0 74.5M38.8 69.3L28.0 74.5M38.8 69.3L39.8 81.3M27.7 50.0L17.8 43.2M27.7 50.0L17.8 56.8M38.8 30.7L39.8 18.7M38.8 30.7L28.0 25.5M61.2 30.7L72.0 25.5M61.2 30.7L60.2 18.7","",""],"arc_en_ciel":["un arc-en-ciel","M10 78A40 40 0 0 1 90 78M18 78A32 32 0 0 1 82 78M26 78A24 24 0 0 1 74 78M4 84Q4 76 12 76Q16 70 22 76Q28 76 28 84ZM72 84Q72 76 80 76Q84 70 90 76Q96 76 96 84Z","",""],"vagues":["la mer, les vagues","M5 36q10 -6 20 0t20 0t20 0t20 0t20 0M5 52q10 -6 20 0t20 0t20 0t20 0t20 0M5 68q10 -6 20 0t20 0t20 0t20 0t20 0M5 84H95","",""],"montagne":["une montagne","M4 86L36 34L50 54L66 28L96 86ZM28 47L36 34L44 47L40 44L36 49L32 44ZM59 40L66 28L73 40L69 37L66 42L62 37Z","",""],"foret":["une forêt","M22 88V76M10 76L22 50L34 76ZM14 62L22 42L30 62M50 88V74M34 74L50 34L66 74ZM40 54L50 24L60 54M78 88V76M66 76L78 50L90 76ZM70 62L78 42L86 62","",""],"arbre":["un arbre","M45 90V62H55V90M50 14Q70 14 72 30Q86 36 80 50Q78 62 62 60Q50 68 38 60Q22 62 20 50Q14 36 28 30Q30 14 50 14Z","",""],"fleur":["une fleur","M43 36a7 7 0 1 0 14 0a7 7 0 1 0 -14 0M56.5 36.0a7.5 7.5 0 1 0 15.0 0a7.5 7.5 0 1 0 -15.0 0M49.5 48.12435565298214a7.5 7.5 0 1 0 15.0 0a7.5 7.5 0 1 0 -15.0 0M35.5 48.124355652982146a7.5 7.5 0 1 0 15.0 0a7.5 7.5 0 1 0 -15.0 0M28.5 36.0a7.5 7.5 0 1 0 15.0 0a7.5 7.5 0 1 0 -15.0 0M35.49999999999999 23.87564434701786a7.5 7.5 0 1 0 15.0 0a7.5 7.5 0 1 0 -15.0 0M49.5 23.87564434701786a7.5 7.5 0 1 0 15.0 0a7.5 7.5 0 1 0 -15.0 0M50 50V90M50 74Q36 62 30 72Q38 82 50 78M50 66Q62 56 70 64Q64 74 50 70","",""],"feu":["le feu","M50 8Q70 34 66 54Q75 48 74 38Q90 60 80 78Q70 92 50 92Q30 92 20 78Q12 60 30 40Q30 54 38 58Q28 34 50 8Z","M50 50Q62 64 60 76Q57 86 50 86Q43 86 40 76Q38 66 50 50Z",""],"volcan":["un volcan","M6 88L36 42H64L94 88ZM36 42Q42 48 50 42Q58 48 64 42M44 38Q44 28 38 20M50 38V12M56 38Q56 28 62 20","M46 44Q42 58 48 66Q56 56 54 44Z",""],"ile":["une île","M14 76Q50 54 86 76ZM52 66Q56 46 50 30M50 30Q34 20 22 30M50 30Q40 14 28 12M50 30Q62 14 76 16M50 30Q68 24 78 34M5 86q10 -6 20 0t20 0t20 0t20 0t20 0","",""],"cle":["une clé","M12 50a14 14 0 1 0 28 0a14 14 0 1 0 -28 0M21 50a5 5 0 1 0 10 0a5 5 0 1 0 -10 0M40 50H90M78 50V62M88 50V60M68 50V58","",""],"porte":["une porte","M28 90V26Q28 10 50 10Q72 10 72 26V90ZM20 90H80","","M59.5 56a3.5 3.5 0 1 0 7.0 0a3.5 3.5 0 1 0 -7.0 0"],"fenetre":["une fenêtre","M22 14h56v70h-56ZM50 14V84M22 49H78M14 84H86M24 16Q36 40 28 82M76 16Q64 40 72 82","",""],"escalier":["un escalier","M8 86H26V72H42V58H58V44H74V30H92M26 86V72M8 86V92H92V30","",""],"telephone":["un téléphone","M39 8H61Q68 8 68 15V85Q68 92 61 92H39Q32 92 32 85V15Q32 8 39 8ZM37 18h26v56h-26ZM45 13H55","","M47 83a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"],"miroir":["un miroir","M26 40a24 30 0 1 0 48 0a24 30 0 1 0 -48 0M32 40a18 24 0 1 0 36 0a18 24 0 1 0 -36 0M50 70V92M42 92H58M38 30Q42 22 50 20","",""],"livre":["un livre","M50 26Q34 18 12 22V80Q34 76 50 84Q66 76 88 80V22Q66 18 50 26ZM50 26V84M20 34Q32 31 42 35M20 46Q32 43 42 47M20 58Q32 55 42 59M58 35Q68 31 80 34M58 47Q68 43 80 46","",""],"horloge":["une horloge","M14 50a36 36 0 1 0 72 0a36 36 0 1 0 -72 0M50 50V26M50 50L66 58M50 16V22M84 50H78M50 84V78M16 50H22","","M47 50a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"],"cadeau":["un cadeau","M18 42h64v46h-64ZM14 30h72v12h-72ZM50 30V88M50 30Q36 12 30 22Q32 32 50 30Q64 12 70 22Q68 32 50 30","",""],"valise":["une valise","M20 32H80Q86 32 86 38V78Q86 84 80 84H20Q14 84 14 78V38Q14 32 20 32ZM38 32V22H62V32M34 32V84M66 32V84","",""],"couteau":["un couteau","M24 70L68 26Q80 18 84 24Q84 36 72 44L32 78ZM28 74L16 86Q12 90 8 86Q4 82 8 78L20 66","",""],"ampoule":["une ampoule","M38 62Q24 50 26 34Q30 14 50 14Q70 14 74 34Q76 50 62 62V72H38ZM40 78H60M42 84H58","M44 52L48 40L52 50L56 40L58 52",""],"bougie":["une bougie","M40 46h20v44h-20ZM50 40V46M40 54Q44 62 47 54","M50 16Q61 30 50 40Q39 30 50 16Z",""],"lettre":["une lettre","M12 26h76v50h-76ZM12 26L50 56L88 26M12 76L40 50M88 76L60 50","",""],"parapluie":["un parapluie","M10 50Q12 16 50 14Q88 16 90 50Q82 44 73 50Q64 44 55 50Q50 46 45 50Q36 44 27 50Q18 44 10 50ZM50 14V7M50 50V82Q50 92 41 89Q35 86 37 80","",""],"chaussure":["une chaussure","M10 68V46Q12 38 22 40Q32 44 40 38L48 32Q60 44 78 54Q90 58 90 68ZM10 68H90V76H10ZM38 42L44 48M44 37L50 43","",""],"couronne":["une couronne","M14 74L10 28L32 50L50 18L68 50L90 28L86 74ZM14 86H86V74H14Z","","M46 62a4 4 0 1 0 8 0a4 4 0 1 0 -8 0M27 64a3 3 0 1 0 6 0a3 3 0 1 0 -6 0M67 64a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"],"appareil_photo":["un appareil photo","M17 30H83Q90 30 90 37V75Q90 82 83 82H17Q10 82 10 75V37Q10 30 17 30ZM35 56a15 15 0 1 0 30 0a15 15 0 1 0 -30 0M43 56a7 7 0 1 0 14 0a7 7 0 1 0 -14 0M34 30L38 21H62L66 30","M72 37h10v6h-10Z",""],"ordinateur":["un ordinateur","M24 20H76Q80 20 80 24V60Q80 64 76 64H24Q20 64 20 60V24Q20 20 24 20ZM25 25h50v34h-50ZM8 70H92L86 80H14Z","",""],"television":["une télévision","M18 26H82Q88 26 88 32V72Q88 78 82 78H18Q12 78 12 72V32Q12 26 18 26ZM18 32h54v40h-54ZM40 26L30 10M60 26L70 10M26 78L22 88M74 78L78 88","","M77 42a3 3 0 1 0 6 0a3 3 0 1 0 -6 0M77 54a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"],"tasse":["une tasse","M20 40H68V64Q68 82 44 82Q20 82 20 64ZM68 47Q86 47 86 58Q86 69 68 66M34 32Q30 24 36 17M46 32Q42 24 48 17M10 90H78","",""],"gateau":["un gâteau","M18 56h64v32h-64ZM27 40h46v16h-46ZM18 70Q26 77 34 70Q42 77 50 70Q58 77 66 70Q74 77 82 70M38 40V28M50 40V26M62 40V28","M38 26Q42 20 38 14Q34 20 38 26ZM50 24Q54 18 50 12Q46 18 50 24ZM62 26Q66 20 62 14Q58 20 62 26Z",""],"lunettes":["des lunettes","M15 54a15 15 0 1 0 30 0a15 15 0 1 0 -30 0M55 54a15 15 0 1 0 30 0a15 15 0 1 0 -30 0M45 51Q50 45 55 51M15 51L8 42M85 51L92 42","",""],"bague":["une bague","M25 62a25 25 0 1 0 50 0a25 25 0 1 0 -50 0M31 62a19 19 0 1 0 38 0a19 19 0 1 0 -38 0","M40 36L44 26H56L60 36L50 44Z",""],"coeur":["l'amour, un cœur","M50 86C10 58 14 24 34 21C44 19 50 29 50 35C50 29 56 19 66 21C86 24 90 58 50 86Z","",""],"coeur_brise":["un cœur brisé","M50 86C10 58 14 24 34 21C44 19 50 29 50 35C50 29 56 19 66 21C86 24 90 58 50 86ZM50 35L43 49L56 59L45 71L50 86","",""],"spirale":["une spirale, le vertige","M52.0 50.0L52.3 50.5L52.4 51.0L52.4 51.7L52.3 52.4L51.9 53.0L51.4 53.7L50.7 54.2L49.9 54.6L48.9 54.8L47.8 54.7L46.7 54.5L45.7 54.0L44.7 53.2L43.9 52.2L43.3 51.0L42.9 49.6L42.8 48.1L43.0 46.6L43.6 45.0L44.5 43.6L45.7 42.4L47.2 41.4L48.9 40.7L50.8 40.3L52.8 40.4L54.8 40.9L56.8 41.8L58.5 43.1L60.0 44.7L61.2 46.8L61.9 49.0L62.2 51.4L62.0 53.9L61.2 56.4L60.0 58.7L58.2 60.8L56.1 62.5L53.6 63.7L50.8 64.5L47.8 64.7L44.9 64.3L42.0 63.2L39.3 61.6L36.9 59.4L35.0 56.8L33.7 53.7L32.9 50.4L32.9 47.0L33.5 43.5L34.9 40.2L36.9 37.1L39.5 34.5L42.7 32.5L46.2 31.0L50.1 30.4L54.1 30.4L58.0 31.3L61.7 33.0L65.1 35.5L67.9 38.6L70.1 42.3L71.6 46.4L72.2 50.7L71.9 55.2L70.7 59.6L68.7 63.7L65.8 67.4L62.2 70.5L58.0 72.8L53.3 74.2L48.4 74.7L43.5 74.2L38.6 72.7L34.2 70.3L30.2 66.9L26.9 62.8L24.6 58.1L23.1 52.9L22.8 47.5L23.5 42.0L25.3 36.8L28.2 31.9L32.0 27.7L36.7 24.3L41.9 21.9L47.7 20.5L53.6 20.3L59.5 21.3L65.2 23.5L70.4 26.8L74.8 31.1L78.4 36.3L80.9 42.1L82.1 48.4","",""],"larme":["une larme, la tristesse","M50 10Q80 50 73 67Q67 88 50 88Q33 88 27 67Q20 50 50 10ZM38 64Q38 76 48 78","",""],"eclair":["un éclair","M58 6L26 54H48L38 94L76 40H54Z","",""],"question":["une question, le doute","M34 32Q34 13 50 13Q67 13 67 30Q67 42 52 48Q50 50 50 62","","M45.5 78a4.5 4.5 0 1 0 9.0 0a4.5 4.5 0 1 0 -9.0 0"],"exclamation":["une surprise, une alerte","M50 12V62","","M45.5 78a4.5 4.5 0 1 0 9.0 0a4.5 4.5 0 1 0 -9.0 0"],"etoile_filante":["une étoile filante","M70.0 18.0L73.2 25.6L81.4 26.3L75.1 31.7L77.1 39.7L70.0 35.4L62.9 39.7L64.9 31.7L58.6 26.3L66.8 25.6ZM60 40L14 80M64 46L32 88M56 34L12 64","",""],"labyrinthe":["un labyrinthe","M12 12H88V88H12V28M26 26H74V74H26V42M40 40H60V60H44M12 28H18","",""],"musique":["la musique","M36 74V26L76 16V64M36 36L76 26","","M21 75a8 6 0 1 0 16 0a8 6 0 1 0 -16 0M61 65a8 6 0 1 0 16 0a8 6 0 1 0 -16 0"],"zzz":["le sommeil","M18 26H40L18 48H40M48 50H64L48 66H64M70 68H82L70 80H82","",""],"sablier":["le temps, un sablier","M26 10H74M26 90H74M31 10Q31 40 50 50Q69 40 69 10M31 90Q31 60 50 50Q69 60 69 90","M38 82Q50 66 62 82Z",""],"infini":["l'infini","M50 50C40 28 12 28 12 50C12 72 40 72 50 50C60 28 88 28 88 50C88 72 60 72 50 50Z","",""]};
+const MOTIFS = Object.keys(PICTOS);
+const ALIAS = {oiseaux: "oiseau", mer: "vagues", eau: "vagues", arbres: "foret", etoile: "etoiles", amour: "coeur"};
+const nomMotif = m => PICTOS[m] ? m : (PICTOS[ALIAS[m]] ? ALIAS[m] : null);
 const JOURS = ["dim.","lun.","mar.","mer.","jeu.","ven.","sam."];
 const MOIS = ["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
 
@@ -676,10 +680,6 @@ async function fabriquer(r){
       Object.assign(r, await scenariser(r.text, r.choix));
       sauver(r);
     }
-    if(!r.svgs && sample){
-      r._prog = "L'IA dessine les 4 scènes…"; rendre();
-      await dessiner(r, n => { r._prog = "Dessin : "+n+"/4 scènes"; rendre(); });
-    }
   }catch(e){
     if(!r.scenes) Object.assign(r, repliLocal(r.text, r.choix));
   }
@@ -693,10 +693,13 @@ async function fabriquer(r){
 
 /* ---------------- scénario par Claude (repli local sinon) ---------------- */
 let sample = null;
-const CLES = {lune:["lune","nuit","soir"],vagues:["mer","eau","océan","plage","rivière","piscine","vague","garonne","lac"],escalier:["escalier","marche","monter","étage"],porte:["porte","couloir","entrer","chambre","pièce"],nuage:["ciel","nuage","voler","brume"],oiseaux:["oiseau","voler","vol","aile"],maison:["maison","appartement","grenier","cuisine","grand-mère","enfance"],foret:["forêt","arbre","bois","jardin"],etoiles:["étoile","espace","planète","nuit"],spirale:["tomber","chute","tourner","perdu","vertige","labyrinthe"],poisson:["poisson","nager","baleine","dauphin"],montagne:["montagne","neige","colline","falaise"],ville:["ville","rue","métro","train","bureau","école","toulouse"],coeur:["amour","bisou","ami","famille","câlin"],fleur:["fleur","champ","printemps","herbe"]};
+const CLES0 = {lune:["lune","nuit","soir"],vagues:["mer","eau","océan","plage","rivière","piscine","vague","garonne","lac"],escalier:["escalier","marche","monter","étage"],porte:["porte","couloir","entrer","chambre","pièce"],nuage:["ciel","nuage","voler","brume"],oiseaux:["oiseau","voler","vol","aile"],maison:["maison","appartement","grenier","cuisine","grand-mère","enfance"],foret:["forêt","arbre","bois","jardin"],etoiles:["étoile","espace","planète","nuit"],spirale:["tomber","chute","tourner","perdu","vertige","labyrinthe"],poisson:["poisson","nager","baleine","dauphin"],montagne:["montagne","neige","colline","falaise"],ville:["ville","rue","métro","train","bureau","école","toulouse"],coeur:["amour","bisou","ami","famille","câlin"],fleur:["fleur","champ","printemps","herbe"]};
 const PALS_C = [["#2e2a52","#4a3f78","#1b1730"],["#24203f","#5a4a8a","#38305e"],["#1f2440","#3d4a70","#2b2148"]];
 const PEURS = ["cauchemar","peur","poursuiv","monstre","mort","cri","hurl","sang","noir","perdu","piégé","enfermé","attaque","tomb","dents","angoisse","panique","quelqu'un derrière","araignée","fantôme"];
 const PALS = [["#ffd8b5","#ffc4da","#d7c8ff"],["#bfe6ff","#d9c8ff","#ffe0f0"],["#d6f5d8","#cfd8ff","#fff1c4"],["#ffd0c2","#ffe9b8","#c8e6ff"],["#e0d4ff","#c9f0ec","#ffd9ec"]];
+const CLES = {};
+MOTIFS.forEach(m => { CLES[m] = [m.replace(/_/g," "), ...PICTOS[m][0].replace(/^(un|une|le|la|les|l'|des)\s*/i,"").split(/,\s*/)].concat(CLES0[m] || []); });
+CLES.oiseau.push(...CLES0.oiseaux);
 function repliLocal(texte, choix){
   const t = texte.toLowerCase();
   const kind = choix && choix!=="auto" ? choix : (PEURS.some(k => t.includes(k)) ? "cauchemar" : "reve");
@@ -710,6 +713,7 @@ function repliLocal(texte, choix){
   return {title: (mots.slice(0,4).join(" ") || "Un rêve flou").replace(/^./,c=>c.toUpperCase()), mood:kind==="cauchemar"?"inquiet":"rêveur", palette:pal, scenes, kind};
 }
 const hex = /^#[0-9a-f]{6}$/i;
+const dessinValide = d => typeof d === "string" && d.length > 8 && d.length < 3000 && /^[MmLlHhVvCcSsQqTtAaZz0-9.,\s-]+$/.test(d);
 async function scenariser(texte, choix){
   if(!sample) return repliLocal(texte, choix);
   const impose = choix==="reve" ? "La personne dit que c'était un rêve." : choix==="cauchemar" ? "La personne dit que c'était un cauchemar." : "Décide toi-même si c'est un rêve ou un cauchemar (peur, angoisse, poursuite, malaise dominants = cauchemar).";
@@ -722,8 +726,10 @@ ${impose}
  "title": titre poétique en français, 2 à 5 mots,
  "mood": un seul mot (ex. joie, étrange, vertige, nostalgie, peur douce),
  "palette": 3 couleurs en hex "#rrggbb" (pastel pour un rêve ; sombres et orageuses pour un cauchemar : bleu nuit, violet profond, gris d'orage),
- "scenes": exactement 4 objets {"caption": légende en français au présent, 3 à 8 mots, fidèle au rêve, "motif": un de ${JSON.stringify(MOTIFS)}, "color": couleur hex dans le même esprit}}
-Les 4 scènes suivent l'ordre du rêve. Choisis le motif le plus proche de chaque scène.`;
+ "scenes": exactement 4 objets {"caption": légende en français au présent, 3 à 8 mots, fidèle au rêve, "motif": l'identifiant du pictogramme le plus proche dans la liste ci-dessous, ou "autre" si vraiment aucun ne convient, "dessin": seulement si motif vaut "autre", un pictogramme simple en ligne claire sous forme d'attribut d de chemin SVG (commandes M L H V C Q A Z) sur une grille 100×100 centrée sur 50,50, "color": couleur hex dans le même esprit}}
+Les 4 scènes suivent l'ordre du rêve.
+Pictogrammes disponibles (identifiant = ce qu'il montre) :
+${MOTIFS.map(m => m + " = " + PICTOS[m][0]).join("\n")}`;
   try{
     const v = await delai(sample.json(consigne), 90000);
     const ok = v && typeof v.title==="string" && Array.isArray(v.scenes) && v.scenes.length>=4;
@@ -733,7 +739,8 @@ Les 4 scènes suivent l'ordre du rêve. Choisis le motif le plus proche de chaqu
     const palette = pal.length>=3 ? pal.slice(0,3) : (kind==="cauchemar" ? PALS_C : PALS)[hash(texte)%3];
     const scenes = v.scenes.slice(0,4).map((s,i) => ({
       caption: String(s.caption||"").slice(0,70) || "…",
-      motif: MOTIFS.includes(s.motif) ? s.motif : MOTIFS[(hash(texte)+i)%MOTIFS.length],
+      motif: nomMotif(s.motif) || (dessinValide(s.dessin) ? "autre" : MOTIFS[(hash(texte)+i)%MOTIFS.length]),
+      dessin: !nomMotif(s.motif) && dessinValide(s.dessin) ? String(s.dessin) : undefined,
       color: hex.test(s.color) ? s.color : palette[i%3]
     }));
     const accent = hex.test(v.accent) ? v.accent : "#7a1f35";
@@ -743,145 +750,7 @@ Les 4 scènes suivent l'ordre du rêve. Choisis le motif le plus proche de chaqu
   }
 }
 
-/* ---------------- dessins cartoon par Claude ---------------- */
 const delai = (p, ms) => Promise.race([p, new Promise((_,ko) => setTimeout(() => ko({code:"timeout"}), ms))]);
-const STYLE_V = "lisible-1";
-const PERSO = `Personnage récurrent, la rêveuse : petite silhouette simple, longs cheveux noirs en aplat noir plein avec une frange en dents de scie, visage rond blanc, deux points pour les yeux, petite bouche, haut blanc et pantalon, chaussures noires. Toujours reconnaissable, en train de faire l'action de la scène (montrer du doigt, courir, nager, regarder en l'air, s'asseoir…).`;
-const STYLE = `Style : dessin au feutre noir très simple et épuré. Fond BLANC #ffffff, trait noir #111 fin et régulier (stroke-width 3, extrémités et jointures arrondies), AUCUNE couleur, aucun gris, aucun dégradé, aucune texture. Quelques aplats noirs seulement (cheveux, chaussures, un objet). Beaucoup de blanc.
-PRIORITÉ ABSOLUE : la scène doit se comprendre en 2 secondes et chaque élément doit être identifiable.
-- Une seule action claire par scène.
-- 2 à 4 éléments clés tirés de la légende, chacun dessiné avec sa silhouette la plus reconnaissable (maison = toit pointu + porte + fenêtre ; mer = ligne d'horizon + vagues ; train = wagons + roues + rails ; arbre = tronc + feuillage rond ; voiture = carrosserie + 2 roues + vitres), assez grands, sans se chevaucher.
-- Le lieu est situé par 1 ou 2 indices simples (ligne de sol, murs, toit, horizon).
-- La rêveuse fait entre 1/5 et 1/3 de la hauteur, posée sur le sol (ou clairement en l'air si elle vole).
-- Pas de détails décoratifs inutiles.`;
-const STYLE_C = STYLE + `
-Version CAUCHEMAR : même dessin simple et lisible, mais la nuit : grands aplats noirs (ciel noir, ombres, fenêtres noires), la rêveuse a l'air inquiète (yeux ronds, bouche ouverte), et un élément menaçant bien identifiable (silhouette noire, ombre, monstre simple). Rien de gore, pas de sang.`;
-const MODELE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 960">
-<rect width="540" height="960" fill="#ffffff"/>
-<g transform="translate(0 -50)" stroke="#111" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
-<path d="M30 430 L270 150 L510 430"/>
-<path d="M30 430 L30 760 M510 430 L510 760 M30 760 L510 760"/>
-<path d="M95 355 L445 355 M150 290 L390 290"/>
-<circle cx="270" cy="230" r="30"/><path d="M270 200 V260 M240 230 H300"/>
-<path d="M150 400 C166 386 196 388 206 404 C196 420 166 422 150 408 Z M150 404 L130 390 L132 418 Z"/>
-<circle cx="194" cy="402" r="3" fill="#111"/>
-<path d="M300 320 C312 310 334 312 340 322 C334 333 312 334 300 326 Z M300 323 L286 313 L288 333 Z" fill="#111"/>
-<path d="M360 410 C374 398 400 400 408 414 C400 428 374 430 360 418 Z M360 414 L343 402 L345 426 Z"/>
-<circle cx="398" cy="412" r="3" fill="#111"/>
-<path d="M50 690 H118 V758 H50 Z M50 690 L118 758 M118 690 L50 758"/>
-<path d="M150 650 L340 650 L364 700 L126 700 Z"/>
-<path d="M126 700 V744 H364 V700"/>
-<path d="M170 668 q12 -8 24 0 t24 0 M240 680 q12 -8 24 0 t24 0 M196 690 q12 -8 24 0" stroke-width="2.5"/>
-<path d="M326 700 V630 Q326 612 340 612 M346 700 V630 Q346 612 360 612 M326 650 H346 M326 672 H346"/>
-<g transform="translate(305 357) scale(.5)" stroke-width="6">
-<path d="M270 400 C232 400 218 430 220 460 C222 500 210 530 216 560 L324 560 C330 530 318 500 320 460 C322 430 308 400 270 400 Z" fill="#111"/>
-<ellipse cx="270" cy="462" rx="38" ry="40" fill="#fff"/>
-<path d="M232 460 C232 432 248 422 270 422 C292 422 308 432 308 460 L300 446 L292 456 L284 444 L276 456 L268 444 L260 456 L252 444 L244 456 Z" fill="#111"/>
-<circle cx="257" cy="468" r="5" fill="#111"/><circle cx="283" cy="468" r="5" fill="#111"/>
-<ellipse cx="270" cy="492" rx="5" ry="7" fill="#111"/>
-<path d="M262 502 L262 516 M278 502 L278 516"/>
-<path d="M236 520 C236 520 246 516 262 516 L278 516 C294 516 304 520 304 520 L310 640 L230 640 Z" fill="#fff"/>
-<path d="M236 524 C224 560 222 600 226 626 M304 524 C330 500 350 470 364 436"/>
-<path d="M232 640 L236 790 L262 790 L270 660 L278 790 L304 790 L308 640"/>
-<path d="M236 790 L230 806 L262 806 L262 790 M304 790 L310 806 L278 806 L278 790" fill="#111"/>
-</g>
-</g>
-</svg>`;
-function svgUrl(svg){ return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg); }
-function nettoyerSvg(txt){
-  const m = String(txt||"").match(/<svg[\s\S]*<\/svg>/i);
-  if(!m) return null;
-  let doc;
-  try { doc = new DOMParser().parseFromString(m[0], "image/svg+xml"); } catch(e){ return null; }
-  const svg = doc.documentElement;
-  if(!svg || svg.nodeName.toLowerCase()!=="svg" || doc.querySelector("parsererror")) return null;
-  svg.querySelectorAll("script,foreignObject,image,use[href^='http'],a").forEach(n=>n.remove());
-  svg.querySelectorAll("*").forEach(n => { [...n.attributes].forEach(a => {
-    if(/^on/i.test(a.name)) n.removeAttribute(a.name);
-    if(/href$/i.test(a.name) && !String(a.value).startsWith("#")) n.removeAttribute(a.name);
-  }); });
-  svg.setAttribute("xmlns","http://www.w3.org/2000/svg");
-  if(!svg.querySelector("#crayon")){
-    const NS = "http://www.w3.org/2000/svg";
-    const g = doc.createElementNS(NS,"g"); g.setAttribute("filter","url(#crayon)");
-    [...svg.childNodes].forEach(n => g.appendChild(n));
-    const defs = doc.createElementNS(NS,"defs");
-    defs.innerHTML = '<filter id="crayon" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="5"/></filter>';
-    svg.appendChild(defs); svg.appendChild(g);
-  }
-  if(!svg.getAttribute("viewBox")) svg.setAttribute("viewBox","0 0 540 960");
-  svg.setAttribute("width","540"); svg.setAttribute("height","960");
-  svg.setAttribute("preserveAspectRatio","xMidYMid slice");
-  return new XMLSerializer().serializeToString(svg);
-}
-async function dessinerScene(r, i){
-  const sc = r.scenes[i];
-  const consigne = `Dessine une scène d'un ${genre(r)==="cauchemar" ? "cauchemar" : "rêve"} en SVG.
-Rêve complet (pour le contexte) : """${r.text.slice(0,1200)}"""
-Scène ${i+1}/4 à dessiner : "${sc.caption}"
-${genre(r)==="cauchemar" ? STYLE_C : STYLE}
-${PERSO}
-Voici un dessin MODÈLE (la légende était « Une piscine dans le grenier, des poissons nagent sous le toit ») : il montre le style, le niveau de simplicité, la lisibilité attendue et la rêveuse. Imite son trait et sa rêveuse, mais compose une scène nouvelle qui illustre ta légende :
-${MODELE}
-Contraintes techniques :
-- Un seul élément <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 960"> (format vertical 9:16), fond entièrement rempli.
-- AUCUN texte, aucune lettre.
-- Toute la scène tient entre y=100 et y=700 ; en dessous de y=720, laisse du blanc (une légende s'y affichera).
-- Commence le SVG par un commentaire <!-- plan : ... --> qui liste les éléments, où ils sont placés et ce que fait la rêveuse, puis dessine en suivant ce plan.
-- Uniquement path, rect, circle, ellipse, line, polyline, polygon, g. Pas d'image, pas de script, pas de filtre, pas de dégradé (l'effet de trait tremblé est ajouté automatiquement).
-- 15 à 60 formes, moins de 12 000 caractères.
-Réponds uniquement avec le code SVG.`;
-  for(let essai=0; essai<2; essai++){
-    try{
-      const res = await delai(sample(consigne), 150000);
-      const svg = nettoyerSvg(res && res.text);
-      if(svg) return svg;
-    }catch(err){
-      derniereErreur = err;
-      if(err && ["not_granted","rate_limited","timeout","quota_jour","cle"].includes(err.code)) return null;
-    }
-  }
-  return null;
-}
-async function dessiner(r, onProgres){
-  if(!sample || !r.scenes) return false;
-  // Les 4 scènes en UNE seule demande, pour économiser le quota gratuit de Gemini.
-  const nature = genre(r)==="cauchemar" ? "cauchemar" : "rêve";
-  const consigne = `Dessine les 4 scènes d'un ${nature} en SVG, comme les 4 cases d'une histoire.
-Rêve complet (pour le contexte) : """${r.text.slice(0,1200)}"""
-Les 4 légendes, dans l'ordre :
-${r.scenes.map((sc,i) => `${i+1}. "${sc.caption}"`).join("\n")}
-${genre(r)==="cauchemar" ? STYLE_C : STYLE}
-${PERSO}
-Voici un dessin MODÈLE (sa légende était « Une piscine dans le grenier, des poissons nagent sous le toit ») : il montre le style, le niveau de simplicité, la lisibilité attendue et la rêveuse. Imite son trait et sa rêveuse, mais compose 4 scènes nouvelles qui illustrent tes légendes :
-${MODELE}
-Contraintes techniques, pour CHACUNE des 4 scènes :
-- Un élément <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 960"> (format vertical 9:16), fond blanc entièrement rempli.
-- AUCUN texte, aucune lettre.
-- Toute la scène tient entre y=100 et y=700 ; en dessous de y=720, laisse du blanc (une légende s'y affichera).
-- Commence chaque SVG par un commentaire <!-- plan : ... --> qui liste les éléments, leur place et ce que fait la rêveuse, puis dessine en suivant ce plan.
-- Uniquement path, rect, circle, ellipse, line, polyline, polygon, g. Pas d'image, pas de script, pas de filtre, pas de dégradé (l'effet de trait tremblé est ajouté automatiquement).
-- 15 à 50 formes, moins de 9 000 caractères.
-Réponds uniquement avec les 4 éléments <svg>…</svg> à la suite, dans l'ordre des légendes, sans aucun autre texte.`;
-  for(let essai = 0; essai < 2; essai++){
-    try{
-      const res = await delai(sample(consigne), 200000);
-      const bruts = String(res && res.text || "").match(/<svg[\s\S]*?<\/svg>/gi) || [];
-      const svgs = bruts.map(nettoyerSvg).filter(Boolean);
-      if(svgs.length >= 4){ r.svgs = svgs.slice(0,4); r.styleV = STYLE_V; onProgres && onProgres(4); return true; }
-      derniereErreur = {code: "incomplet", message: "Gemini n'a renvoyé que " + svgs.length + " dessin(s) sur 4"};
-    }catch(err){
-      derniereErreur = err;
-      if(err && ["not_granted","rate_limited","timeout","quota_jour","cle"].includes(err.code)) return false;
-    }
-  }
-  return false;
-}
-function chargerImages(r){
-  if(!r.svgs) return Promise.resolve(null);
-  return Promise.all(r.svgs.map(svg => new Promise(ok => { const im = new Image(); im.onload=()=>ok(im); im.onerror=()=>ok(null); im.src = svgUrl(svg); })))
-    .then(ims => ims.every(Boolean) ? ims : null);
-}
 
 /* ---------------- pages ---------------- */
 const pages = $("#pages");
@@ -976,7 +845,7 @@ $("#voir-parchemin").onclick = () => { if(courant && courant.interpretation){ fe
 let dernier = null;
 function annoncer(r){
   dernier = r;
-  $("#toast-txt").textContent = r.svgs || !sample ? "Ton rêve « "+r.title+" » est prêt" : "Ton rêve est prêt, mais sans dessins : " + ((derniereErreur && derniereErreur.message) || "Gemini n'a pas répondu à temps");
+  $("#toast-txt").textContent = "Ton rêve « "+r.title+" » est prêt";
   $("#toast").classList.add("ouvert");
   clearTimeout(annoncer.t); annoncer.t = setTimeout(()=>$("#toast").classList.remove("ouvert"), 9000);
 }
@@ -993,44 +862,26 @@ function mix(a,b,k){ const pa=parseInt(a.slice(1),16), pb=parseInt(b.slice(1),16
   return `rgb(${r},${g},${bl})`; }
 const doux = k => k<0?0:k>1?1:k*k*(3-2*k);
 
-function dessinerMotif(x, m, cx, cy, s, t){
-  x.save(); x.translate(cx,cy); x.scale(s,s);
-  x.strokeStyle="rgba(255,255,255,.95)"; x.fillStyle="rgba(255,255,255,.85)"; x.lineWidth=5; x.lineCap="round"; x.lineJoin="round";
-  const P = () => x.beginPath();
-  switch(m){
-    case "lune": P(); x.arc(0,0,110,.35*Math.PI,1.65*Math.PI); x.arc(45,-10,95,1.55*Math.PI,.45*Math.PI,true); x.fill(); break;
-    case "vagues": for(let k=0;k<5;k++){ P(); for(let i=-200;i<=200;i+=8){ const y=k*38-70+Math.sin(i/30+t/500+k)*12; i===-200?x.moveTo(i,y):x.lineTo(i,y);} x.globalAlpha=1-k*.15; x.stroke(); } break;
-    case "escalier": P(); x.moveTo(-170,140); for(let i=0;i<7;i++){ x.lineTo(-170+i*48,140-i*42); x.lineTo(-122+i*48,140-i*42);} x.stroke(); break;
-    case "porte": P(); x.moveTo(-70,150); x.lineTo(-70,-60); x.arc(0,-60,70,Math.PI,0); x.lineTo(70,150); x.closePath();
-      x.save(); x.fillStyle="rgba(255,250,220,.55)"; x.fill(); x.restore(); x.stroke(); P(); x.arc(45,40,7,0,7); x.fill(); break;
-    case "nuage": [[-70,10,60],[0,-25,80],[75,10,60],[0,30,60]].forEach(([a,b,r])=>{P();x.arc(a+Math.sin(t/900)*6,b,r,0,7);x.fill();}); break;
-    case "oiseaux": for(let i=0;i<6;i++){ const ox=-150+i*60+Math.sin(t/400+i)*10, oy=-60+((i*53)%120), a=Math.sin(t/180+i)*10;
-      P(); x.moveTo(ox-22,oy-a); x.quadraticCurveTo(ox-10,oy-14,ox,oy); x.quadraticCurveTo(ox+10,oy-14,ox+22,oy-a); x.stroke(); } break;
-    case "maison": P(); x.moveTo(-110,140); x.lineTo(-110,0); x.lineTo(0,-100); x.lineTo(110,0); x.lineTo(110,140); x.closePath(); x.stroke();
-      x.save(); x.fillStyle="rgba(255,236,170,.9)"; x.fillRect(-60,30,45,45); x.fillRect(20,30,45,45); x.restore(); break;
-    case "foret": for(let i=-3;i<=3;i++){ const hgt=150+((i*37)%5+5)%5*14; P(); x.moveTo(i*58,140); x.lineTo(i*58-34,140); x.lineTo(i*58,140-hgt); x.lineTo(i*58+34,140); x.closePath(); x.globalAlpha=.55+.1*((i+3)%3); x.fill(); } break;
-    case "etoiles": for(let i=0;i<9;i++){ const a=i*2.4, r=40+i*16, ex=Math.cos(a)*r, ey=Math.sin(a)*r, sc=8+(i%3)*5;
-      x.globalAlpha=.6+.4*Math.sin(t/300+i); P(); for(let k=0;k<10;k++){ const rr=k%2?sc*.4:sc, aa=k*Math.PI/5; x.lineTo(ex+Math.cos(aa)*rr, ey+Math.sin(aa)*rr);} x.fill(); } break;
-    case "spirale": P(); for(let a=0;a<6*Math.PI;a+=.1){ const r=6+a*9; x.lineTo(Math.cos(a+t/700)*r, Math.sin(a+t/700)*r); } x.stroke(); break;
-    case "poisson": for(let i=0;i<3;i++){ const px=-90+i*90+Math.sin(t/500+i)*20, py=-50+i*50;
-      x.save(); x.fillStyle=i===1?"rgba(255,190,160,.95)":"rgba(255,255,255,.85)"; P(); x.ellipse(px,py,38,20,0,0,7); x.fill(); P(); x.moveTo(px-34,py); x.lineTo(px-60,py-18); x.lineTo(px-60,py+18); x.closePath(); x.fill(); x.restore(); } break;
-    case "montagne": P(); x.moveTo(-200,140); x.lineTo(-80,-60); x.lineTo(0,40); x.lineTo(80,-110); x.lineTo(200,140); x.closePath(); x.globalAlpha=.75; x.fill(); break;
-    case "ville": for(let i=-4;i<=4;i++){ const hgt=80+((i*7919)%5+5)%5*30; x.globalAlpha=.8; x.fillRect(i*44-18,140-hgt,36,hgt);
-      x.save(); x.fillStyle="rgba(255,225,150,.95)"; for(let k=0;k<hgt/34-1;k++) if((i+k)%2) x.fillRect(i*44-10,150-hgt+k*30,8,10); x.restore(); } break;
-    case "coeur": { const b=1+Math.sin(t/250)*.05; x.scale(b,b); P(); x.moveTo(0,60); x.bezierCurveTo(-120,-20,-60,-110,0,-50); x.bezierCurveTo(60,-110,120,-20,0,60); x.fill(); } break;
-    case "fleur": for(let k=0;k<5;k++){ const fx0=-140+k*70, fy=60-((k*41)%60);
-      x.save(); x.translate(fx0,fy); x.rotate(t/2000+k); for(let p=0;p<6;p++){ x.rotate(Math.PI/3); P(); x.ellipse(0,-18,9,18,0,0,7); x.fill(); }
-      x.fillStyle="rgba(255,220,140,1)"; P(); x.arc(0,0,8,0,7); x.fill(); x.restore(); } break;
-  }
+const cacheChemins = {};
+const chemin = d => cacheChemins[d] || (cacheChemins[d] = new Path2D(d));
+function dessinerMotif(x, m, cx, cy, s, t, dessin){
+  const p = PICTOS[nomMotif(m)] || (dessin && dessinValide(dessin) ? ["", dessin, "", ""] : PICTOS.etoiles);
+  const [, d, dore, plein] = p;
+  x.save();
+  x.translate(cx, cy); x.rotate(Math.sin(t/1500) * .04); x.scale(3.2*s, 3.2*s); x.translate(-50, -50);
+  x.lineJoin = "round"; x.lineCap = "round";
+  try {
+    if(dore){ x.fillStyle = "rgba(255,227,163,.95)"; x.fill(chemin(dore)); }
+    x.strokeStyle = "rgba(255,255,255,.97)"; x.lineWidth = 2.6; x.stroke(chemin(d));
+    if(plein){ x.fillStyle = "rgba(255,255,255,.97)"; x.fill(chemin(plein)); }
+  } catch(e){}
   x.restore();
 }
-
 function image(x, r, t){
   const n = r.scenes.length, dur = DUREE/n;
   const i = Math.min(n-1, Math.floor(t/dur)), p = (t - i*dur)/dur;
   const sc = r.scenes[i], prec = r.scenes[Math.max(0,i-1)];
   const pal = r.palette;
-  if(r._ims) return imageIllu(x, r, t, i, p, sc);
   const k = i===0 ? 1 : doux(p/0.25);
   const haut = mix(prec.color, sc.color, k);
   const bas = mix(pal[(i+1)%3], pal[(i+2)%3], k);
@@ -1044,9 +895,9 @@ function image(x, r, t){
   }
   // motif (zoom lent + fondu)
   const alpha = Math.min(doux(p/0.22), doux((1-p)/0.18));
-  x.save(); x.globalAlpha = alpha*.9; x.filter = "blur(1.5px)";
+  x.save(); x.globalAlpha = alpha; x.filter = "blur(.6px)";
   x.shadowColor="rgba(255,255,255,.9)"; x.shadowBlur=30;
-  dessinerMotif(x, sc.motif, W/2, H*.42 + Math.sin(t/1200)*10, 1 + p*.18, t);
+  dessinerMotif(x, sc.motif, W/2, H*.42 + Math.sin(t/1200)*10, 1 + p*.12, t, sc.dessin);
   x.restore();
   // poussière lumineuse
   for(let s=0;s<50;s++){
@@ -1060,55 +911,25 @@ function image(x, r, t){
   // titre au début
   if(t < 2600){
     x.save(); x.globalAlpha = Math.min(doux(t/500), doux((2600-t)/600));
-    x.fillStyle="#fff"; x.textAlign="center"; x.shadowColor="rgba(40,30,80,.5)"; x.shadowBlur=18;
+    const vh = x.createLinearGradient(0,0,0,H*.36); vh.addColorStop(0,"rgba(30,22,60,.55)"); vh.addColorStop(1,"rgba(30,22,60,0)");
+    x.fillStyle = vh; x.fillRect(0,0,W,H*.36);
+    x.fillStyle="#fff"; x.textAlign="center"; x.shadowColor="rgba(30,22,60,.9)"; x.shadowBlur=14;
     x.font = "italic 400 52px Fraunces, Georgia, serif";
     lignes(x, r.title, W-80).forEach((l,j,a)=>x.fillText(l, W/2, H*.2 + (j-(a.length-1)/2)*58));
     x.font = "800 15px Nunito, sans-serif"; x.fillText((dateCourte(r.createdAt)).toUpperCase()+"  ·  "+(r.mood||"").toUpperCase(), W/2, H*.2 - 70);
     x.restore();
   }
+  // voile sombre en bas pour la lisibilité
+  const vb = x.createLinearGradient(0,H*.6,0,H); vb.addColorStop(0,"rgba(30,22,60,0)"); vb.addColorStop(1,"rgba(30,22,60,.5)");
+  x.fillStyle = vb; x.fillRect(0,H*.6,W,H*.4);
   // légende
   x.save(); x.globalAlpha = Math.min(doux((p-.08)/.15), doux((1-p)/.12));
-  x.fillStyle="#fff"; x.textAlign="center"; x.shadowColor="rgba(40,30,80,.55)"; x.shadowBlur=16;
+  x.fillStyle="#fff"; x.textAlign="center"; x.shadowColor="rgba(30,22,60,.9)"; x.shadowBlur=14;
   x.font = "italic 400 38px Fraunces, Georgia, serif";
   const ls = lignes(x, sc.caption, W-90);
   ls.forEach((l,j)=>x.fillText(l, W/2, H*.78 + j*46 - (ls.length-1)*23));
   x.restore();
   return i;
-}
-function imageIllu(x, r, t, i, p, sc){
-  const ims = r._ims, n = ims.length, dur = DUREE/n;
-  const plan = (k, local) => { // Ken Burns : zoom lent + glissement alterné
-    const z = 1 + local*0.07, dx = (k%2 ? -1 : 1) * (local-0.5) * 16;
-    const w = W*z, h = H*z;
-    x.drawImage(ims[k], (W-w)/2 + dx, H*0.35 - H*0.35*z, w, h);
-  };
-  x.fillStyle = "#fff"; x.fillRect(0,0,W,H);
-  plan(i, p);
-  const fondu = 0.12; // fondu enchaîné vers la scène suivante
-  if(i < n-1 && p > 1-fondu){ x.save(); x.globalAlpha = doux((p-(1-fondu))/fondu); plan(i+1, 0); x.restore(); }
-  // bandeau blanc en bas pour la légende
-  const g = x.createLinearGradient(0,H*.77,0,H*.81); g.addColorStop(0,"rgba(255,255,255,0)"); g.addColorStop(1,"rgba(255,255,255,.95)");
-  x.fillStyle = g; x.fillRect(0,H*.77,W,H*.04); x.fillStyle = "rgba(255,255,255,.95)"; x.fillRect(0,H*.81,W,H*.19);
-  if(genre(r)==="cauchemar") eclair(x, t);
-  surimpressions(x, r, t, p, sc);
-  return i;
-}
-function surimpressions(x, r, t, p, sc){
-  if(t < 2600){
-    x.save(); x.globalAlpha = Math.min(doux(t/500), doux((2600-t)/600));
-    x.fillStyle="rgba(255,255,255,.94)"; x.fillRect(0,0,W,H*.24);
-    x.fillStyle="#111"; x.textAlign="center";
-    x.font = "italic 400 50px Fraunces, Georgia, serif";
-    lignes(x, r.title, W-80).forEach((l,j,a)=>x.fillText(l, W/2, H*.14 + (j-(a.length-1)/2)*56));
-    x.font = "800 15px Nunito, sans-serif"; x.fillText((dateCourte(r.createdAt)).toUpperCase()+"  ·  "+(r.mood||"").toUpperCase(), W/2, H*.14 - 66);
-    x.restore();
-  }
-  x.save(); x.globalAlpha = Math.min(doux((p-.06)/.12), doux((1-p)/.1));
-  x.fillStyle="#111"; x.textAlign="center";
-  x.font = "italic 400 38px Fraunces, Georgia, serif";
-  const ls = lignes(x, sc.caption, W-90);
-  ls.forEach((l,j)=>x.fillText(l, W/2, (r._ims ? H*.88 : H*.84) + j*46 - (ls.length-1)*23));
-  x.restore();
 }
 const FLASHS = [[2000,170],[2320,90],[6900,150],[7120,70],[11300,180],[11560,80]];
 function eclair(x, t){
@@ -1156,28 +977,7 @@ async function ouvrirLecteur(r){
   $("#supprimer").style.display = r.example ? "none" : "";
   $("#voir-parchemin").style.display = r.interpretation ? "" : "none";
   $("#lecteur").classList.add("ouvert");
-  const ch = $("#chargement");
-  if(r.svgs && r.styleV !== STYLE_V && sample){ r._ancien = r.svgs; delete r.svgs; delete r._ims; }
-  if(!r.svgs && sample){
-    const txt = $("#chargement-txt"); let faites = 0;
-    const base = () => faites ? "Les 4 scènes sont dessinées !" : "L'IA dessine les 4 scènes de ce rêve… (compte 1 à 2 minutes)";
-    ch.classList.add("ouvert"); txt.textContent = base();
-    fx.fillStyle = "#2a2350"; fx.fillRect(0,0,W,H);
-    derniereErreur = null;
-    messageIA = m => { txt.textContent = base() + "\n" + m; };
-    txt.style.whiteSpace = "pre-line";
-    const ok = await dessiner(r, n => { faites = n; txt.textContent = base(); });
-    messageIA = null;
-    if(ok){ delete r._ancien; r.example ? memoEx() : sauver(r); rendre(); }
-    else {
-      if(r._ancien){ r.svgs = r._ancien; delete r._ancien; }
-      const pourquoi = derniereErreur && derniereErreur.message ? derniereErreur.message : "Gemini n'a pas répondu à temps";
-      txt.textContent = "Dessin impossible pour l'instant : " + pourquoi + ".\nLe film s'affiche en version simple, les dessins seront retentés à la prochaine ouverture.";
-      await pause(4500);
-    }
-  }
-  if(r.svgs && !r._ims) r._ims = await chargerImages(r);
-  ch.classList.remove("ouvert");
+  $("#chargement").classList.remove("ouvert");
   if(courant !== r || !$("#lecteur").classList.contains("ouvert")) return;
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(lancer); else lancer();
 }

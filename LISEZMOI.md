@@ -1,6 +1,6 @@
 # Attrape-rêves
 
-Une appli web installable (PWA) : on raconte son rêve au réveil, l'IA (Gemini) le dessine en 4 scènes au feutre, et il rejoint la galerie de bulles en petit film. Une deuxième page, l'oracle, interprète les rêves sur un parchemin.
+Une appli web installable (PWA) : on raconte son rêve au réveil, l'IA (Gemini) le met en scène en 4 cartes illustrées par une bibliothèque de 100 pictogrammes, et il rejoint la galerie de bulles en petit film. Une deuxième page, l'oracle, interprète les rêves sur un parchemin.
 
 ## Ce qu'il y a dans le dossier
 
@@ -37,7 +37,7 @@ Le code est public, mais il ne contient ni ta clé ni tes rêves : ils restent u
 3. Dans l'appli, touche la roue ⚙, colle la clé et touche **Tester la clé**.
 
 Bon à savoir :
-- L'offre gratuite a des limites quotidiennes. Si l'appli affiche « Trop de demandes », attends un peu et réessaie.
+- Un rêve = 1 requête Gemini, une interprétation de l'oracle = 1 requête. Si le quota gratuit du jour est épuisé, l'appli passe sur le modèle léger (`gemini-3.5-flash-lite`), puis, en dernier recours, fabrique les cartes elle-même à partir des mots du rêve.
 - Sur l'offre gratuite, Google peut utiliser les textes envoyés pour améliorer ses produits.
 - Ne mets jamais ta clé dans les fichiers du dépôt : elle se colle uniquement dans les réglages de l'appli.
 - Si Google renomme ses modèles, change le nom du modèle dans les réglages (par défaut : `gemini-3.8-flash`).
